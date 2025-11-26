@@ -22,13 +22,13 @@ pipeline{
         stage('Verify Node') {
             steps {
                 // quick check to ensure node/npm available on agent
-                sh 'node -v || echo "Node not found; install node on agent" && node -v'
-                sh 'npm -v || echo "npm not found; install npm on agent" && npm -v'
+                sh 'node -v'
+                sh 'npm -v'
             }
         }
         stage('Install Dependencies'){
             steps{
-                sh 'npm install'
+                sh 'npm ci'
             }
         }
         stage('Build Angular App'){

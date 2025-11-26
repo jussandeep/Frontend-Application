@@ -16,31 +16,31 @@ pipeline {
     }
 
     stage('Prepare workspace cache & Install') {
-      steps {
-        sh '''
-        set -e
-        # base workspace cache dir that will contain timestamped files
-        WORKSPACE_CACHE_DIR="${WORKSPACE}/npm_cache"
-        mkdir -p "$WORKSPACE_CACHE_DIR"
+        steps {
+            sh '''
+            set -e
+            WORKSPACE_CACHE_DIR="${WORKSPACE}/npm_cache"
+            mkdir -p "$WORKSPACE_CACHE_DIR"
 
-        # per-run temporary cache folder (so npm has a clean writable cache)
-        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        RUN_CACHE_DIR="${WORKSPACE_CACHE_DIR}/run-${TIMESTAMP}"
-        mkdir -p "$RUN_CACHE_DIR"
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            RUN_CACHE_DIR="${WORKSPACE_CACHE_DIR}/run-${TIMESTAMP}"
+            mkdir -p "$RUN_CACHE_DIR"
 
-        echo "Using run cache dir: $RUN_CACHE_DIR"
-        export npm_config_cache="$RUN_CACHE_DIR"
+            echo "Using run cache dir: $RUN_CACHE_DIR"
+            export npm_config_cache="$RUN_CACHE_DIR"
 
-        # run install using explicit --cache to be safe
-        npm ci --cache "$RUN_CACHE_DIR" --prefer-offline
+            npm ci --cache "$RUN_CACHE_DIR" --prefer-offline
 
-        # persist the paths for later stages
-        echo "WORKSPACE_CACHE_DIR=$WORKSPACE_CACHE_DIR" > cache_info.txt
-        echo "RUN_CACHE_DIR=$RUN_CACHE_DIR" >> cache_info.txt
-        echo "TIMESTAMP=$TIMESTAMP" >> cache_info.txt
-        '''
-      }
+            # safe: write quoted export lines so later `source` handles spaces
+            cat > cache_info.txt <<EOF
+            export WORKSPACE_CACHE_DIR='${WORKSPACE_CACHE_DIR}'
+            export RUN_CACHE_DIR='${RUN_CACHE_DIR}'
+            export TIMESTAMP='${TIMESTAMP}'
+            EOF
+            '''
+        }
     }
+
 
     stage('Build Angular App') {
       steps {

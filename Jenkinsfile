@@ -4,7 +4,7 @@ pipeline{
             // Node version compatible with Angular 14
             image 'node:16-alpine'
             // Cache npm between builds (optional but good)
-            args '-v $HOME/.npm:/root/.npm'
+            // args '-v $HOME/.npm:/root/.npm'
         }
     }
     

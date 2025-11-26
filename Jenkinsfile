@@ -9,7 +9,7 @@ pipeline{
     }
     environment {
         NODE_OPTIONS = '--max_old_space_size=4096'
-        npm_config_cache = 'npm-cache'  // ← Use local cache folder
+        // we do NOT hardcode npm_config_cache here because we create a per-build timestamped cache in the steps
     }
     stages{
         // stage('Checkout'){
@@ -29,15 +29,62 @@ pipeline{
                 sh 'npm -v'
             }
         }
-        stage('Install Dependencies'){
-            steps{
-                sh 'npm ci'
+        // stage('Install Dependencies'){
+        //     steps{
+        //         sh 'npm ci'
+        //     }
+        // }
+        stage('Prepare cache & Install Dependencies') {
+        steps {
+                // create a timestamped cache, use it for npm, then run npm ci
+                sh '''
+                set -e
+                TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                CACHE_DIR="${WORKSPACE}/npm-cache-${TIMESTAMP}"
+                echo "Using cache dir: $CACHE_DIR"
+                mkdir -p "$CACHE_DIR"
+                # ensure npm uses this cache for this shell
+                export npm_config_cache="$CACHE_DIR"
+                # run install using explicit --cache as well
+                npm ci --cache "$CACHE_DIR" --prefer-offline
+                # expose variables for later stages (optional logging)
+                echo "CACHE_DIR=$CACHE_DIR" > cache_info.txt
+                '''
             }
         }
-        stage('Build Angular App'){
-            steps{
-                sh 'npm run build -- --configuration production'
+        // stage('Build Angular App'){
+        //     steps{
+        //         sh 'npm run build -- --configuration production'
                 
+        //     }
+        // }
+        stage('Build Angular App') {
+            steps {
+                sh '''
+                # read CACHE_DIR we created earlier (if needed)
+                if [ -f cache_info.txt ]; then source cache_info.txt; fi
+                echo "Building, using cache: $CACHE_DIR"
+                npm run build -- --configuration production
+                '''
+            }
+        }
+
+        stage('Persist cache (save timestamped copy)') {
+            steps {
+                sh '''
+                set -e
+                # read CACHE_DIR created above
+                if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
+
+                # persistent target outside workspace so cleanWs won't remove it
+                PERSISTENT_BASE="${JENKINS_HOME:-/var/jenkins_home}/npm-cache/${JOB_NAME}"
+                mkdir -p "$PERSISTENT_BASE"
+                # copy the timestamped cache dir to persistent storage (keep the timestamp)
+                cp -a "$CACHE_DIR" "$PERSISTENT_BASE/" 
+                # update a 'latest' symlink for convenience
+                ln -sfn "$PERSISTENT_BASE/$(basename "$CACHE_DIR")" "$PERSISTENT_BASE/latest"
+                echo "Saved cache to $PERSISTENT_BASE/$(basename "$CACHE_DIR")"
+                '''
             }
         }
         stage('Archive Artifacts') {

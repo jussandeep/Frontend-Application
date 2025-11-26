@@ -44,13 +44,13 @@ pipeline {
 
     stage('Build Angular App') {
       steps {
-        sh '''
-        set -e
-        if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
-        echo "Building using cache: $RUN_CACHE_DIR"
-        npm run build -- --configuration production
-        '''
-      }
+            sh '''
+            set -e
+            if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
+            echo "Building using cache: $RUN_CACHE_DIR"
+            npm run build -- --configuration production
+            '''
+        }
     }
 
     stage('Package cache into timestamped file (in workspace)') {

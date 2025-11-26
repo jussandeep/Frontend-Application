@@ -7,7 +7,10 @@ pipeline{
             // args '-v $HOME/.npm:/root/.npm'
         }
     }
-    
+    environment {
+        NODE_OPTIONS = '--max_old_space_size=4096'
+        npm_config_cache = 'npm-cache'  // ← Use local cache folder
+    }
     stages{
         // stage('Checkout'){
         //     steps {
@@ -37,7 +40,11 @@ pipeline{
                 
             }
         }
-
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
+            }
+        }
         
     }
      post {
@@ -49,6 +56,7 @@ pipeline{
         }
         always {
             echo '============================Pipeline finished============================'
+            cleanWs()
         }
     }
 }

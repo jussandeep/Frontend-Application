@@ -2,16 +2,16 @@ pipeline {
     agent {
         docker { image 'node:16-alpine' }
     }
+
     stages {
         stage('Verify Node') {
             steps {
-                // Confirm Node and npm are available
                 sh 'node --version && npm --version'
             }
         }
+
         stage('Prepare workspace & Install') {
             steps {
-                // Create npm_cache dir, set up a temp cache, run npm ci, save cache info
                 sh '''
                     mkdir -p npm_cache
                     timestamp=$(date +%s)
@@ -25,49 +25,51 @@ pipeline {
                 '''
             }
         }
+
         stage('Build Angular App') {
             steps {
-                // Run Angular build (CLI or npm script)
                 sh 'npm run build -- --configuration production'
             }
         }
+
         stage('Package cache into timestamped file') {
             steps {
                 sh '''
-                    # Load TIMESTAMP and CACHE_FOLDER
                     . ./cache_info.txt
                     mkdir -p npm_cache
-                    # Create tar.gz of the npm cache folder
                     tar czf "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" -C . "$CACHE_FOLDER"
-                    # Update (or create) the symlink for latest cache
                     ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" npm_cache/latest.tar.gz
                 '''
             }
         }
+
         stage('Archive Artifacts') {
             steps {
-                // Archive all cache tarballs for later retrieval
                 archiveArtifacts artifacts: 'npm_cache/npm-cache-*-build*.tar.gz', fingerprint: true
             }
         }
-        stage('Preserve Cache Outside Workspace') {
+
+        stage('Preserve Cache Inside Workspace (Safe)') {
             steps {
                 sh '''
-                    # Copy the tarball to a persistent location (JENKINS_HOME/npm-cache/JobName)
-                    dest="$JENKINS_HOME/npm-cache/${JOB_NAME}"
-                    mkdir -p "$dest"
-                    cp "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$dest/"
-                    ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$dest/latest.tar.gz"
+                    . ./cache_info.txt
+                    PERSIST_DIR=".jenkins_cache"
+                    mkdir -p "$PERSIST_DIR"
+                    cp "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$PERSIST_DIR/"
+                    ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$PERSIST_DIR/latest.tar.gz"
+                    echo "Saved persistent cache to $PERSIST_DIR/"
                 '''
             }
         }
     }
+
     post {
         always {
             cleanWs()
         }
     }
 }
+
 
 
 // pipeline{

@@ -28,7 +28,7 @@ pipeline {
         stage('Build Angular App') {
             steps {
                 // Run Angular build (CLI or npm script)
-                sh 'npm run build -- --prod'
+                sh 'npm run build -- --configuration production'
             }
         }
         stage('Package cache into timestamped file') {

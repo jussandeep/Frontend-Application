@@ -64,9 +64,15 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
+        success {
+            echo '=========================== Build successful!==========================='
         }
+        failure {
+            echo '=========================== Build failed!==============================='
+        }
+        always {
+            echo '============================Pipeline finished============================'
+            
     }
 }
 

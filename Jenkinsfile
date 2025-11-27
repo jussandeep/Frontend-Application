@@ -1,121 +1,74 @@
 pipeline {
-  agent {
-    docker { image 'node:16-alpine' }
-  }
-
-  environment {
-    NODE_OPTIONS = '--max_old_space_size=4096'
-    // we don't set npm_config_cache here; we set it in the shell for each run
-  }
-
-  stages {
-    stage('Verify Node') {
-      steps {
-        sh 'node -v; npm -v'
-      }
+    agent {
+        docker { image 'node:16-alpine' }
     }
-
-    stage('Prepare workspace cache & Install') {
-        steps {
-            sh '''
-            set -e
-            WORKSPACE_CACHE_DIR="${WORKSPACE}/npm_cache"
-            mkdir -p "$WORKSPACE_CACHE_DIR"
-
-            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-            RUN_CACHE_DIR="${WORKSPACE_CACHE_DIR}/run-${TIMESTAMP}"
-            mkdir -p "$RUN_CACHE_DIR"
-
-            echo "Using run cache dir: $RUN_CACHE_DIR"
-            export npm_config_cache="$RUN_CACHE_DIR"
-
-            npm ci --cache "$RUN_CACHE_DIR" --prefer-offline
-
-            # safe: write quoted export lines so later `source` handles spaces
-            cat > cache_info.txt <<EOF
-            export WORKSPACE_CACHE_DIR='${WORKSPACE_CACHE_DIR}'
-            export RUN_CACHE_DIR='${RUN_CACHE_DIR}'
-            export TIMESTAMP='${TIMESTAMP}'
-            EOF
-            '''
+    stages {
+        stage('Verify Node') {
+            steps {
+                // Confirm Node and npm are available
+                sh 'node --version && npm --version'
+            }
+        }
+        stage('Prepare workspace & Install') {
+            steps {
+                // Create npm_cache dir, set up a temp cache, run npm ci, save cache info
+                sh '''
+                    mkdir -p npm_cache
+                    timestamp=$(date +%s)
+                    cacheFolder="run-${timestamp}"
+                    mkdir -p "$cacheFolder"
+                    export npm_config_cache="$PWD/$cacheFolder"
+                    npm ci
+                    # Save variables for next stages
+                    echo "export TIMESTAMP=\\"$timestamp\\"" > cache_info.txt
+                    echo "export CACHE_FOLDER=\\"$cacheFolder\\"" >> cache_info.txt
+                '''
+            }
+        }
+        stage('Build Angular App') {
+            steps {
+                // Run Angular build (CLI or npm script)
+                sh 'npm run build -- --prod'
+            }
+        }
+        stage('Package cache into timestamped file') {
+            steps {
+                sh '''
+                    # Load TIMESTAMP and CACHE_FOLDER
+                    . ./cache_info.txt
+                    mkdir -p npm_cache
+                    # Create tar.gz of the npm cache folder
+                    tar czf "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" -C . "$CACHE_FOLDER"
+                    # Update (or create) the symlink for latest cache
+                    ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" npm_cache/latest.tar.gz
+                '''
+            }
+        }
+        stage('Archive Artifacts') {
+            steps {
+                // Archive all cache tarballs for later retrieval
+                archiveArtifacts artifacts: 'npm_cache/npm-cache-*-build*.tar.gz', fingerprint: true
+            }
+        }
+        stage('Preserve Cache Outside Workspace') {
+            steps {
+                sh '''
+                    # Copy the tarball to a persistent location (JENKINS_HOME/npm-cache/JobName)
+                    dest="$JENKINS_HOME/npm-cache/${JOB_NAME}"
+                    mkdir -p "$dest"
+                    cp "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$dest/"
+                    ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$dest/latest.tar.gz"
+                '''
+            }
         }
     }
-
-
-    stage('Build Angular App') {
-      steps {
-            sh '''
-            set -e
-            if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
-            echo "Building using cache: $RUN_CACHE_DIR"
-            npm run build -- --configuration production
-            '''
+    post {
+        always {
+            cleanWs()
         }
     }
-
-    stage('Package cache into timestamped file (in workspace)') {
-      steps {
-        sh '''
-        set -e
-        if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
-
-        # create a single tar.gz file inside workspace/npm_cache/
-        TAR_NAME="npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz"
-        TAR_PATH="${WORKSPACE_CACHE_DIR}/${TAR_NAME}"
-        echo "Creating tarball in workspace: $TAR_PATH"
-        # tar from the parent dir so tar has only the run folder inside the archive
-        tar -C "$(dirname "$RUN_CACHE_DIR")" -czf "$TAR_PATH" "$(basename "$RUN_CACHE_DIR")"
-
-        # also create/update a workspace latest symlink for convenience
-        ln -sfn "$TAR_PATH" "${WORKSPACE_CACHE_DIR}/latest.tar.gz"
-        ls -lh "$WORKSPACE_CACHE_DIR"
-        '''
-      }
-    }
-
-    stage('Optional: copy timestamped file to persistent storage (survives cleanWs)') {
-      steps {
-        sh '''
-        set -e
-        if [ -f cache_info.txt ]; then source cache_info.txt; else echo "cache_info.txt missing"; exit 1; fi
-
-        # Persistent storage location (outside workspace)
-        PERSISTENT_BASE="${JENKINS_HOME:-/var/jenkins_home}/npm-cache/${JOB_NAME}"
-        mkdir -p "$PERSISTENT_BASE"
-
-        # copy the workspace tarball to the persistent dir (keeps a copy if workspace is cleaned)
-        SRC_TARBALL="${WORKSPACE_CACHE_DIR}/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz"
-        cp -a "$SRC_TARBALL" "$PERSISTENT_BASE/"
-
-        # update 'latest' symlink in persistent storage too
-        ln -sfn "$PERSISTENT_BASE/$(basename "$SRC_TARBALL")" "$PERSISTENT_BASE/latest.tar.gz"
-
-        echo "Copied $SRC_TARBALL -> $PERSISTENT_BASE/"
-        ls -lh "$PERSISTENT_BASE"
-        '''
-      }
-    }
-
-    stage('Archive Artifacts') {
-      steps {
-        archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
-      }
-    }
-  }
-
-  post {
-    success {
-      echo '=========================== Build successful! ==========================='
-    }
-    failure {
-      echo '=========================== Build failed! ================================'
-    }
-    always {
-      echo '============================ Pipeline finished ============================='
-      cleanWs()
-    }
-  }
 }
+
 
 // pipeline{
 //     agent {

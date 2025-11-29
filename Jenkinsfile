@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        docker { image 'node:16-alpine' }
+        docker { image 'node:18-alpine' }
     }
 
     stages {
@@ -49,6 +49,8 @@ pipeline {
             }
         }
 
+        
+
         stage('Preserve Cache Inside Workspace (Safe)') {
             steps {
                 sh '''
@@ -61,6 +63,26 @@ pipeline {
                 '''
             }
         }
+
+
+        // stage('Build Docker Image') {
+        //     steps {
+        //         sh 'docker build -t Frontend/Frontend-Application:latest.'
+        //     }
+        // }
+        // stage('Push image to Docker Hub') {
+        //     steps{
+        //         script {
+        //             withCredentials([string(credentialsId: 'FrontendDockerHubID', variable: 'FrontendDockerDubPwd')]) {
+        //                 sh 'docker login -u jsandeep9866 -p ${FrontendDockerDubPwd}'
+        //                 sh 'docker push Frontend/Frontend-Application:latest'
+        //             }
+        //         }
+        //     }
+        // }
+    
+
+
     }
 
     post {

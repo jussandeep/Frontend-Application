@@ -65,21 +65,21 @@ pipeline {
         }
 
 
-        // stage('Build Docker Image') {
-        //     steps {
-        //         sh 'docker build -t Frontend/Frontend-Application:latest.'
-        //     }
-        // }
-        // stage('Push image to Docker Hub') {
-        //     steps{
-        //         script {
-        //             withCredentials([string(credentialsId: 'FrontendDockerHubID', variable: 'FrontendDockerDubPwd')]) {
-        //                 sh 'docker login -u jsandeep9866 -p ${FrontendDockerDubPwd}'
-        //                 sh 'docker push Frontend/Frontend-Application:latest'
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t Frontend/Frontend-Application:latest.'
+            }
+        }
+        stage('Push image to Docker Hub') {
+            steps{
+                script {
+                    withCredentials([string(credentialsId: 'FrontendDockerHubID', variable: 'FrontendDockerDubPwd')]) {
+                        sh 'docker login -u jsandeep9866 -p ${FrontendDockerDubPwd}'
+                        sh 'docker push Frontend/Frontend-Application:latest'
+                    }
+                }
+            }
+        }
     
 
 

@@ -68,7 +68,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker build -t jsandeep9866/frontend-application:latest.
+                    docker build -t jsandeep9866/frontend-application:latest .
                 '''
             }
         }

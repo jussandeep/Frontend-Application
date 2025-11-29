@@ -67,7 +67,9 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t jsandeep9866/frontend-application:latest.'
+                sh '''
+                    docker build -t jsandeep9866/frontend-application:latest.
+                '''
             }
         }
         stage('Push image to Docker Hub') {

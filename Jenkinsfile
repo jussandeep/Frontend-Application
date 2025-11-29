@@ -4,7 +4,7 @@ pipeline {
   environment {
     IMAGE = "jsandeep9866/frontend-application:latest"
     NODE_IMAGE = "node:18-alpine"
-    DOCKER_CLIENT_IMAGE = "docker:24.0.5" // docker client image
+    DOCKER_CLIENT_IMAGE = "docker:24.0.5"
   }
 
   stages {
@@ -32,7 +32,6 @@ pipeline {
               mkdir -p "$cacheFolder"
               export npm_config_cache="$PWD/$cacheFolder"
               npm ci
-              # Save variables for next stages
               echo "export TIMESTAMP=\\"$timestamp\\"" > cache_info.txt
               echo "export CACHE_FOLDER=\\"$cacheFolder\\"" >> cache_info.txt
             '''
@@ -90,16 +89,13 @@ pipeline {
     stage('Build & Push Docker Image (docker client container)') {
       steps {
         script {
-          // Use docker client image and mount host docker socket + workspace
           docker.image(DOCKER_CLIENT_IMAGE).inside(
             "-u root:root -v /var/run/docker.sock:/var/run/docker.sock -v $WORKSPACE:$WORKSPACE"
           ) {
             sh '''
               set -e
               cd $WORKSPACE
-              # Ensure Dockerfile and built dist exist
               ls -la
-              # Build image
               docker build -t ${IMAGE} .
             '''
             withCredentials([string(credentialsId: 'FrontendDockerHubID', variable: 'DOCKER_PASS')]) {
@@ -111,7 +107,7 @@ pipeline {
       }
     }
 
-  } // stages
+  }
 
   post {
     success { echo '=========================== Build successful!===========================' }

@@ -1,7 +1,8 @@
 pipeline {
-    agent {
-        docker { image 'node:18-alpine' }
-    }
+    agent any
+    // {
+    //     docker { image 'node:18-alpine' }
+    // }
 
     stages {
         stage('Verify Node') {

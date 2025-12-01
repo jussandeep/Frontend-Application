@@ -1,15 +1,13 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:18'   // build will run inside this container (has node & npm)
-             args '-u root:root'
-        }
+    agent any
+    tools {
+        nodejs 'NodeJS-18' // Ensure this matches the name configured in Jenkins
     }
     
     environment {
         BUILD_DIR = "dist/angular-mean-crud-tutorial"  // Output folder after Angular build
         DEPLOY_DIR = "/usr/share/nginx/html" // Target directory for deployment
-        HOME = "/tmp"
+        
     }
     stages {
         stage('Clone Repository') {
@@ -29,7 +27,7 @@ pipeline {
             steps {
                 echo '=== Installing npm dependencies ==='
                 // sh 'npm ci'  
-                sh 'npm ci --cache /tmp/.npm'
+                sh 'npm ci --cache .npm-cache --prefer-offline'
             }
         }
         stage('Build Angular App') {
@@ -53,11 +51,15 @@ pipeline {
                         // sh "sudo chown -R www-data:www-data ${DEPLOY_DIR} || true"
                         // sh "sudo chmod -R 755 ${DEPLOY_DIR} || true"
                         // echo "Deployment complete."
-                        sh "mkdir -p ${DEPLOY_DIR}"
-                        sh "rm -rf ${DEPLOY_DIR}/*"
-                        sh "cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
-                        sh "chmod -R 755 ${DEPLOY_DIR}"
-                        echo "Deployment complete."
+                        echo "Deploying from ${BUILD_DIR} to ${DEPLOY_DIR}..."
+                        sh """
+                            sudo mkdir -p ${DEPLOY_DIR}
+                            sudo rm -rf ${DEPLOY_DIR}/*
+                            sudo cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/
+                            sudo chown -R www-data:www-data ${DEPLOY_DIR}
+                            sudo chmod -R 755 ${DEPLOY_DIR}
+                        """
+                        echo "Deployment complete!"
                     }else {
                         error "Build directory not found: ${BUILD_DIR}"
                     }
@@ -74,118 +76,3 @@ pipeline {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-// pipeline {
-//     agent any
-//     // {
-//     //     docker { image 'node:18-alpine' }
-//     // }
-
-//     stages {
-//         stage('Verify Node') {
-//             steps {
-//                 sh 'node --version && npm --version'
-//             }
-//         }
-
-//         stage('Prepare workspace & Install') {
-//             steps {
-//                 sh '''
-//                     mkdir -p npm_cache
-//                     timestamp=$(date +%s)
-//                     cacheFolder="run-${timestamp}"
-//                     mkdir -p "$cacheFolder"
-//                     export npm_config_cache="$PWD/$cacheFolder"
-//                     npm ci
-//                     # Save variables for next stages
-//                     echo "export TIMESTAMP=\\"$timestamp\\"" > cache_info.txt
-//                     echo "export CACHE_FOLDER=\\"$cacheFolder\\"" >> cache_info.txt
-//                 '''
-//             }
-//         }
-
-//         stage('Build Angular App') {
-//             steps {
-//                 sh 'npm run build -- --configuration production'
-//             }
-//         }
-
-//         stage('Package cache into timestamped file') {
-//             steps {
-//                 sh '''
-//                     . ./cache_info.txt
-//                     mkdir -p npm_cache
-//                     tar czf "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" -C . "$CACHE_FOLDER"
-//                     ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" npm_cache/latest.tar.gz
-//                 '''
-//             }
-//         }
-
-//         stage('Archive Artifacts') {
-//             steps {
-//                 archiveArtifacts artifacts: 'npm_cache/npm-cache-*-build*.tar.gz', fingerprint: true
-//             }
-//         }
-
-        
-
-//         stage('Preserve Cache Inside Workspace (Safe)') {
-//             steps {
-//                 sh '''
-//                     . ./cache_info.txt
-//                     PERSIST_DIR=".jenkins_cache"
-//                     mkdir -p "$PERSIST_DIR"
-//                     cp "npm_cache/npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$PERSIST_DIR/"
-//                     ln -sf "npm-cache-${TIMESTAMP}-build${BUILD_NUMBER}.tar.gz" "$PERSIST_DIR/latest.tar.gz"
-//                     echo "Saved persistent cache to $PERSIST_DIR/"
-//                 '''
-//             }
-//         }
-
-
-//         stage('Build Docker Image') {
-//             steps {
-//                 sh 'docker build -t jsandeep9866/frontend-application:latest .'
-//             }
-//         }
-//         stage('Push image to Docker Hub') {
-//             steps{
-//                 script {
-//                     withCredentials([string(credentialsId: 'FrontendDockerHubID', variable: 'FrontendDockerDubPwd')]) {
-//                         sh "docker login -u jsandeep9866 -p ${FrontendDockerDubPwd}"
-//                         sh 'docker push jsandeep9866/frontend-application:latest'
-//                     }
-//                 }
-//             }
-//         }
-    
-
-
-//     }
-
-//     post {
-//         success {
-//             echo '=========================== Build successful!==========================='
-//         }
-//         failure {
-//             echo '=========================== Build failed!==============================='
-//         }
-//         always {
-//             echo '============================Pipeline finished============================'
-            
-//         }
-//     }
-// }
-

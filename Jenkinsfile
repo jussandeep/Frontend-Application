@@ -21,7 +21,7 @@ pipeline {
             steps {
                 sh 'node -v'
                 sh 'npm -v'
-                sh 'ng version'
+                // sh 'ng version'
             }
         }
         stage('Install Dependencies') {

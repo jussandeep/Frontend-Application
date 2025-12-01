@@ -2,66 +2,52 @@ pipeline {
     agent any
     environment {
         BUILD_DIR = "dist/angular-mean-crud-tutorial"  // Output folder after Angular build
-        DEPLOY_DIR = "/usr/share/nginx/html/angular-app" // Target directory for deployment
+        DEPLOY_DIR = "/var/lib/jenkins/workspace" // Target directory for deployment
     }
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main',
+                git branch: 'main', 
                     url: 'https://github.com/jussandeep/Frontend-Application.git'
             }
         }
         stage('Verify Node.js and npm') {
             steps {
-                echo '=== Checking Node.js and npm versions ==='
                 sh 'node -v'
                 sh 'npm -v'
+                sh 'ng version'
             }
         }
         stage('Install Dependencies') {
             steps {
                 echo '=== Installing npm dependencies ==='
-                sh 'npm ci'  
+                sh 'npm ci'  // More reliable than 'npm install' for CI/CD
             }
         }
         stage('Build Angular App') {
             steps {
                 echo '=== Building Angular application ==='
-                sh 'npm run build -- --configuration=production'
+                sh 'ng build --configuration=production'
             }
         }
-        stage('Verify Build Output') {
+        stage('Deploy') {
             steps {
-                echo '=== Verifying build output ==='
-                sh "ls -la ${BUILD_DIR}"
-            }
-        }
-
-        stage('Deploy to Nginx') {
-            steps {
-                echo '=== Deploying to Nginx ==='
+                script {
+                    if (fileExists(BUILD_DIR)) {
+                        echo "Deploying build to ${DEPLOY_DIR}..."
+                        // Ignore errors if DEPLOY_DIR does not exist
+                        sh "rm -rf ${DEPLOY_DIR} || true"
                 
-                // Create deployment directory
-                sh "sudo mkdir -p ${DEPLOY_DIR}"
+                        // Create the deployment directory
+                        sh "mkdir -p ${DEPLOY_DIR}"
                 
-                // Remove old files
-                sh "sudo rm -rf ${DEPLOY_DIR}/*"
-                
-                // Copy new build
-                sh "sudo cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
-                
-                // Set permissions
-                sh "sudo chown -R ${NGINX_USER}:${NGINX_USER} ${DEPLOY_DIR}"
-                sh "sudo chmod -R 755 ${DEPLOY_DIR}"
-                
-                echo "✅ Deployment complete"
-            }
-        }
-
-        stage('Reload Nginx') {
-            steps {
-                echo '=== Reloading Nginx ==='
-                sh 'sudo systemctl reload nginx'
+                        // Copy build artifacts
+                        sh "cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
+                        echo "Deployment complete."
+                    }else {
+                        error "Build directory not found: ${BUILD_DIR}"
+                    }
+                }
             }
         }
     }
@@ -74,6 +60,13 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+
+
 
 
 

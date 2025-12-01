@@ -1,5 +1,11 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:18'   // build will run inside this container (has node & npm)
+     
+        }
+    }
+    
     environment {
         BUILD_DIR = "dist/angular-mean-crud-tutorial"  // Output folder after Angular build
         DEPLOY_DIR = "/usr/share/nginx/html" // Target directory for deployment

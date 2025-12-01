@@ -2,13 +2,14 @@ pipeline {
     agent {
         docker {
             image 'node:18'   // build will run inside this container (has node & npm)
-     
+             args '-u root:root'
         }
     }
     
     environment {
         BUILD_DIR = "dist/angular-mean-crud-tutorial"  // Output folder after Angular build
         DEPLOY_DIR = "/usr/share/nginx/html" // Target directory for deployment
+        HOME = "/tmp"
     }
     stages {
         stage('Clone Repository') {
@@ -27,7 +28,8 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 echo '=== Installing npm dependencies ==='
-                sh 'npm ci'  // More reliable than 'npm install' for CI/CD
+                // sh 'npm ci'  
+                sh 'npm ci --cache /tmp/.npm'
             }
         }
         stage('Build Angular App') {
@@ -43,16 +45,21 @@ pipeline {
                     if (fileExists(BUILD_DIR)) {
                         echo "Deploying build from ${BUILD_DIR} to ${DEPLOY_DIR}..."
                         // ensure deploy dir exists and remove only its contents
-                        sh "sudo mkdir -p ${DEPLOY_DIR}"
-                        sh "sudo rm -rf ${DEPLOY_DIR}/* || true"
-                        // copy build content with sudo
-                        sh "sudo cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
-                        // set ownership and permissions so nginx can serve files
-                        sh "sudo chown -R www-data:www-data ${DEPLOY_DIR} || true"
-                        sh "sudo chmod -R 755 ${DEPLOY_DIR} || true"
+                        // sh "sudo mkdir -p ${DEPLOY_DIR}"
+                        // sh "sudo rm -rf ${DEPLOY_DIR}/* || true"
+                        // // copy build content with sudo
+                        // sh "sudo cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
+                        // // set ownership and permissions so nginx can serve files
+                        // sh "sudo chown -R www-data:www-data ${DEPLOY_DIR} || true"
+                        // sh "sudo chmod -R 755 ${DEPLOY_DIR} || true"
+                        // echo "Deployment complete."
+                        sh "mkdir -p ${DEPLOY_DIR}"
+                        sh "rm -rf ${DEPLOY_DIR}/*"
+                        sh "cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
+                        sh "chmod -R 755 ${DEPLOY_DIR}"
                         echo "Deployment complete."
                     }else {
-                        error "Build directory not found: ${BUILD_DIR} (check the dist folder name)"
+                        error "Build directory not found: ${BUILD_DIR}"
                     }
                 }
             }

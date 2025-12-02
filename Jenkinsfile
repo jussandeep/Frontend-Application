@@ -36,7 +36,7 @@ pipeline {
         stage('Build Angular App') {
             steps {
                 echo '=== Building Angular application ==='
-                sh 'npm build --configuration=production'
+                sh 'npm run build --configuration=production'
                 // sh 'npm run build -- --configuration=production'
             }
         }

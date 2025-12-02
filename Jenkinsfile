@@ -20,7 +20,7 @@ pipeline {
             steps {
                 sh 'node -v'
                 sh 'npm -v'
-                sh 'ng version'
+                // sh 'ng version'
             }
         }
         stage('Install Dependencies') {
@@ -33,7 +33,7 @@ pipeline {
         stage('Build Angular App') {
             steps {
                 echo '=== Building Angular application ==='
-                sh 'ng build --configuration=production'
+                sh 'npm build --configuration=production'
                 // sh 'npm run build -- --configuration=production'
             }
         }

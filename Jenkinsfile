@@ -1,12 +1,13 @@
 pipeline {
     agent any
     tools {
-        nodejs 'NodeJS-18' // Ensure this matches the name configured in Jenkins
+        nodejs 'NodeJS-18' 
     }
     
     environment {
-        BUILD_DIR = "dist/angular-mean-crud-tutorial"  // Output folder after Angular build
-        DEPLOY_DIR = "/usr/share/nginx/html" // Target directory for deployment
+        BUILD_DIR = "dist/angular-mean-crud-tutorial"  
+        DEPLOY_DIR = "/var/www/angular_app"
+
         
     }
     stages {
@@ -23,7 +24,7 @@ pipeline {
                     node -v
                     npm -v
                 '''
-                // sh 'ng version'
+                
             }
         }
         stage('Install Dependencies') {
@@ -37,33 +38,43 @@ pipeline {
             steps {
                 echo '=== Building Angular application ==='
                 sh 'npm run build --configuration=production'
-                // sh 'npm run build -- --configuration=production'
+                
             }
         }
-        // stage('Deploy') {
+        // stage('Deploy App') {
         //     steps {
-        //         script {
-        //             if (fileExists(BUILD_DIR)) {
-        //                 echo "Deploying build from ${BUILD_DIR} to ${DEPLOY_DIR}..."
-        //                // Ignore errors if DEPLOY_DIR does not exist
-        //                 sh "rm -rf ${DEPLOY_DIR} || true"
-                
-        //                 // Create the deployment directory
-        //                 sh "mkdir -p ${DEPLOY_DIR}"
-                
-        //                 // Copy build artifacts
-        //                 sh "cp -r ${BUILD_DIR}/* ${DEPLOY_DIR}/"
-        //                 echo "Deployment complete."
-        //             }else {
-        //                 error "Build directory not found: ${BUILD_DIR}"
-        //             }
-        //         }
+        //         sh '''
+        //           rm -rf ${DEPLOY_DIR}/*
+        //           cp -r ${WORKSPACE}/${BUILD_DIR}/* ${DEPLOY_DIR}/
+        //           chmod -R 755 ${DEPLOY_DIR}
+        //         '''
         //     }
         // }
-        stage('Archive build artifacts') {
+        stage('Deploy to nginx') {
             steps {
-                echo "Archiving ${BUILD_DIR}"
-                archiveArtifacts artifacts: "${BUILD_DIR}/**/*", fingerprint: true
+                sh '''
+                  # fail if build folder is missing
+                  if [ ! -d "${WORKSPACE}/${BUILD_DIR}" ]; then
+                    echo "ERROR: Build folder not found: ${WORKSPACE}/${BUILD_DIR}"
+                    exit 1
+                  fi
+
+                  # remove old files (but keep folder)
+                  rm -rf ${DEPLOY_DIR}/*
+
+                  # copy new build files to deploy dir
+                  cp -r ${WORKSPACE}/${BUILD_DIR}/* ${DEPLOY_DIR}/
+
+                  # fix permissions (jenkins owns folder already)
+                  chmod -R 755 ${DEPLOY_DIR}
+                '''
+            }
+        }
+
+        stage('Post-deploy check') {
+            steps {
+                echo "Deployed files at ${DEPLOY_DIR}:"
+                sh "ls -la ${DEPLOY_DIR} | sed -n '1,120p'"
             }
         }
     }

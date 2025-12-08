@@ -1,18 +1,20 @@
 # Stage 1 — build the Angular app
-FROM node:16-alpine AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Install dependencies (use package-lock to get reproducible installs)
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # Copy source and build the app (production)
 COPY . .
 # adjust this if your angular.json outputs to a different folder/name
 RUN npm run build -- --configuration production
 
-# Stage 2 — serve with nginx
-FROM nginx:stable-alpine
+
+# ===============================================================================
+# Stage 2 — production stage of serve with nginx 
+FROM nginx:alpine
 # Remove default nginx static files
 RUN rm -rf /usr/share/nginx/html/*
 

@@ -5,78 +5,50 @@ pipeline {
     }
     
     environment {
-        BUILD_DIR = "dist/angular-mean-crud-tutorial"  
-        DEPLOY_DIR = "/var/www/angular_app"
+        DOCKER_HUB_USER = 'jsandeep9866'
+        IMAGE = "${DOCKER_HUB_USER}/frontend-application"
+        TAG = "v1.0.${BUILD_NUMBER}"
 
         
     }
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
                 git branch: 'main', 
                     url: 'https://github.com/jussandeep/Frontend-Application.git'
             }
         }
-        stage('Verify Node.js and npm') {
-            steps {
-                sh '''
-                    echo "Node and npm versions:"
-                    node -v
-                    npm -v
-                '''
-                
-            }
-        }
-        stage('Install Dependencies') {
-            steps {
-                echo '=== Installing npm dependencies ==='
-                sh 'npm ci'  
-                
-            }
-        }
-        stage('Build Angular App') {
-            steps {
-                echo '=== Building Angular application ==='
-                sh 'npm run build --configuration=production'
-                
-            }
-        }
-        // stage('Deploy App') {
+        // stage('Verify Node.js and npm') {
         //     steps {
         //         sh '''
-        //           rm -rf ${DEPLOY_DIR}/*
-        //           cp -r ${WORKSPACE}/${BUILD_DIR}/* ${DEPLOY_DIR}/
-        //           chmod -R 755 ${DEPLOY_DIR}
+        //             echo "Node and npm versions:"
+        //             node -v
+        //             npm -v
         //         '''
+                
         //     }
         // }
-        stage('Deploy to nginx') {
+        
+        stage('Docker Build') {
             steps {
-                sh '''
-                  # fail if build folder is missing
-                  if [ ! -d "${WORKSPACE}/${BUILD_DIR}" ]; then
-                    echo "ERROR: Build folder not found: ${WORKSPACE}/${BUILD_DIR}"
-                    exit 1
-                  fi
-
-                  # remove old files (but keep folder)
-                  rm -rf ${DEPLOY_DIR}/*
-
-                  # copy new build files to deploy dir
-                  cp -r ${WORKSPACE}/${BUILD_DIR}/* ${DEPLOY_DIR}/
-
-                  # fix permissions (jenkins owns folder already)
-                  chmod -R 755 ${DEPLOY_DIR}
-                '''
+                sh "docker build -t ${IMAGE}:${TAG} ."
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'DockerHubID', variable: 'DockerHubPwd')]) {
+                        sh 'echo $DockerHubPwd | docker login -u ${DOCKER_HUB_USER} --password-stdin'
+                        sh "docker push ${IMAGE}:${TAG}"
+                        sh "docker push ${IMAGE}:latest"
+    
+                   }
+                    
+                }
             }
         }
 
-        stage('Post-deploy check') {
-            steps {
-                echo "Deployed files at ${DEPLOY_DIR}:"
-                sh "ls -la ${DEPLOY_DIR} | sed -n '1,120p'"
-            }
-        }
+     
     }
     post {
         success {

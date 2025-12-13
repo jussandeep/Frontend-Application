@@ -57,7 +57,7 @@ pipeline {
                     withCredentials([file(credentialsId: 'GOOGLE_CLOUD_KEY', variable: 'GOOGLE_KEY_FILE')]) {
                         
                         // --- Configuration (Set using confirmed values) ---
-                        def PROJECT_ID = "adroit-poet-452006" 
+                        def PROJECT_ID = "adroit-poet-452006-a3" 
                         def CLUSTER_NAME = "k8scluster1"   
                         def CLUSTER_ZONE = "africa-south1-c"    
                         // -----------------------------------------------------------------

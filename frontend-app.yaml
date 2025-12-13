@@ -1,0 +1,49 @@
+# =================================================================
+# 1. Deployment: Defines the application pod configuration
+# ================================================================= 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend-container
+        image: jsandeep9866/frontend-application:latest 
+        ports:
+        - containerPort: 80 
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+
+---
+# =================================================================
+# 2. Service: Exposes the deployment 
+# =================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend 
+  ports:
+    - port: 80 
+      targetPort: 80
+  type: NodePort

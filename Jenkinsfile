@@ -83,7 +83,7 @@ pipeline {
                 sh '''
                   aws eks update-kubeconfig \
                     --region ap-south-1 \
-                    --name new-cluster
+                    --name my-cluster
 
                   kubectl apply -f frontend-app.yaml
                   kubectl rollout status deployment/frontend-deployment

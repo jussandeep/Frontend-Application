@@ -1,33 +1,25 @@
-# Stage 1 — build the Angular app
+# ---------- Stage 1: Build Angular ----------
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Install dependencies (use package-lock to get reproducible installs)
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 
-# Copy source and build the app (production)
 COPY . .
-# adjust this if your angular.json outputs to a different folder/name
 RUN npm run build -- --configuration production
 
 
-# ===============================================================================
-# Stage 2 — production stage of serve with nginx 
+# ---------- Stage 2: Nginx ----------
 FROM nginx:alpine
-# Remove default nginx static files
+
+# Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built files from the builder stage
-# Many projects build to dist/<project-name> — using wildcard is robust
+# Copy Angular build
 COPY --from=builder /app/dist/angular-mean-crud-tutorial/ /usr/share/nginx/html/
 
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Optional: add a custom nginx config (uncomment if you have one)
-# ADD nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose default HTTP port
 EXPOSE 80
-
-# Keep nginx running in the foreground
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-g", "daemon off;"]
